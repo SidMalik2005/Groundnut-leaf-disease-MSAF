@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this code or model, please cite it as below."
+title: "MSAF-DenseNet201: Multi-Scale Attention Fusion for Groundnut Leaf Disease Classification"
+authors:
+  - family-names: Malik
+    given-names: Siddhant
+    affiliation: "VIT Bhopal University"
+date-released: 2026-09-30
+license: MIT
+repository-code: "https://github.com/SidMalik2005/Groundnut-leaf-disease-MSAF"
+keywords:
+  - deep learning
+  - plant disease
+  - groundnut
+  - DenseNet201
+  - attention
+  - Grad-CAM

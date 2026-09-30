@@ -1,0 +1,6 @@
+Class,Precision,Recall,F1_Score,Support,Accuracy
+early_leaf_spot,0.8322,0.917,0.8725,265,0.917
+healthy leaf,0.918,0.8423,0.8785,279,0.8423
+late leaf spot,0.9902,0.9758,0.983,207,0.9758
+nutrition deficiency,0.9697,0.9697,0.9697,99,0.9697
+rust,0.9552,0.9412,0.9481,68,0.9412

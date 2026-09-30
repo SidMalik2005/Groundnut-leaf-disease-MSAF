@@ -1,0 +1,19 @@
+{
+  "model": "MSAF-DenseNet201",
+  "test_images": 918,
+  "accuracy": 0.9150326797385621,
+  "balanced_accuracy": 0.9291987779597463,
+  "precision_w": 0.9178321517251627,
+  "recall_w": 0.9150326797385621,
+  "f1_w": 0.9153291462090622,
+  "precision_macro": 0.9330554919094549,
+  "recall_macro": 0.9291987779597463,
+  "f1_macro": 0.9303699157768772,
+  "cohen_kappa": 0.8876509214149545,
+  "mcc": 0.8885353179903602,
+  "roc_auc": 0.9891592098051465,
+  "log_loss": 0.3385683617694685,
+  "best_epoch": 59,
+  "weights": "raw",
+  "val_accuracy": 0.9252336448598131
+}

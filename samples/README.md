@@ -1,0 +1,1 @@
+One example image per class from the *Dataset of groundnut plant leaf images for classification and detection* (Data in Brief 48, 2023, doi:10.1016/j.dib.2023.109185), resized to 640 px. For demonstration only; they may be part of the training split.

@@ -1,0 +1,20 @@
+# environments
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# model weights live in the GitHub Release, not in git
+*.pt
+*.pth
+
+# data and training outputs
+data/
+Raw_Data/
+runs/
+
+# OS / editor
+.DS_Store
+.ipynb_checkpoints/
+.vscode/
+.idea/

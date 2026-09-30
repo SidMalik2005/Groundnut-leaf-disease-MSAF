@@ -1,0 +1,2 @@
+model,test_images,accuracy,balanced_accuracy,precision_w,recall_w,f1_w,precision_macro,recall_macro,f1_macro,cohen_kappa,mcc,roc_auc,log_loss,best_epoch,weights,val_accuracy
+MSAF-DenseNet201,918,0.915,0.9292,0.9178,0.915,0.9153,0.9331,0.9292,0.9304,0.8877,0.8885,0.9892,0.3386,59,raw,0.9252

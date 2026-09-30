@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Groundnut Leaf Disease Detection</title>
+<style>
+  :root{
+    --bg:#f5f7f3; --card:#ffffff; --ink:#16261a; --muted:#5d6f61;
+    --line:#dde5dc; --brand:#1b5e20; --brand-2:#2e7d32; --accent:#66bb6a;
+    --warn:#c62828; --mid:#ef6c00; --ok:#2e7d32;
+    --radius:14px; --shadow:0 1px 3px rgba(20,40,25,.07),0 8px 24px rgba(20,40,25,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#11150f; --card:#191f18; --ink:#e8efe6; --muted:#9db09f;
+           --line:#2a332a; --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3); }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;padding:26px 20px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  header h1{margin:0 0 4px;font-size:24px;letter-spacing:-.02em}
+  header p{margin:0;opacity:.9;font-size:14px}
+  .badges{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+  .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);
+         padding:4px 10px;border-radius:999px;font-size:12px}
+  main{padding:26px 0 60px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+        box-shadow:var(--shadow);padding:22px;margin-bottom:20px}
+  h2{margin:0 0 14px;font-size:17px}
+  #drop{border:2px dashed var(--line);border-radius:var(--radius);padding:38px 20px;
+        text-align:center;cursor:pointer;transition:.18s;background:transparent}
+  #drop:hover,#drop.over{border-color:var(--accent);background:rgba(102,187,106,.07)}
+  #drop .big{font-size:34px;line-height:1}
+  #drop p{margin:10px 0 4px;font-weight:600}
+  #drop small{color:var(--muted)}
+  input[type=file]{display:none}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}
+  button{background:var(--brand);color:#fff;border:0;padding:11px 22px;border-radius:9px;
+         font-size:15px;font-weight:600;cursor:pointer}
+  button:hover{background:var(--brand-2)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .ghost:hover{background:transparent;color:var(--ink)}
+  label.chk{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:14px;cursor:pointer}
+  .hide{display:none!important}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  figure{margin:0}
+  figure img{width:100%;border-radius:10px;border:1px solid var(--line);display:block}
+  figcaption{margin-top:7px;font-size:13px;color:var(--muted);text-align:center}
+  .verdict{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+           padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:16px}
+  .verdict .name{font-size:26px;font-weight:700;letter-spacing:-.02em}
+  .conf{font-size:15px;color:var(--muted)}
+  .pill{font-size:12px;font-weight:700;padding:3px 11px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+  .sev-high{background:rgba(198,40,40,.13);color:var(--warn)}
+  .sev-moderate{background:rgba(239,108,0,.13);color:var(--mid)}
+  .sev-low{background:rgba(239,108,0,.10);color:var(--mid)}
+  .sev-none{background:rgba(46,125,50,.13);color:var(--ok)}
+  .sev-unknown{background:rgba(120,120,120,.15);color:var(--muted)}
+  .bar-row{margin-bottom:11px}
+  .bar-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+  .bar-top .pct{color:var(--muted);font-variant-numeric:tabular-nums}
+  .track{height:9px;background:var(--line);border-radius:99px;overflow:hidden}
+  .fill{height:100%;background:var(--accent);border-radius:99px;transition:width .5s ease}
+  .bar-row.top .fill{background:var(--brand)}
+  .bar-row.top .bar-top{font-weight:600}
+  dl{margin:0}
+  dt{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:14px}
+  dt:first-child{margin-top:0}
+  dd{margin:4px 0 0}
+  .meta{font-size:13px;color:var(--muted);margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+  .err{background:rgba(198,40,40,.1);border:1px solid rgba(198,40,40,.3);color:var(--warn);
+       padding:13px 16px;border-radius:10px}
+  .spin{width:19px;height:19px;border:2.5px solid var(--line);border-top-color:var(--brand);
+        border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-4px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  footer{color:var(--muted);font-size:13px;text-align:center;padding:0 20px 40px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Groundnut Leaf Disease Detection</h1>
+    <p>Proposed CNN — MSAF-DenseNet201 (multi-scale attention fusion)</p>
+    <div class="badges">
+      <span class="badge">{{ n_classes }} classes</span>
+      <span class="badge">Device: {{ device }}</span>
+      <span class="badge">Weights: {{ meta.weights }}</span>
+      <span class="badge">Val accuracy: {{ '%.2f'|format(meta.val_accuracy * 100) }}%</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="card">
+    <h2>Upload a leaf image</h2>
+    <div id="drop">
+      <div class="big">🌿</div>
+      <p>Drop an image here, or click to browse</p>
+      <small>JPG, PNG, WEBP or TIFF · up to 16 MB</small>
+      <input type="file" id="file" accept="image/*">
+    </div>
+    <div class="row">
+      <button id="go" disabled>Analyse leaf</button>
+      <button id="reset" class="ghost hide">Clear</button>
+      <label class="chk"><input type="checkbox" id="cam" checked> Show Grad-CAM heatmap</label>
+      <span id="fname" style="color:var(--muted);font-size:14px"></span>
+    </div>
+  </div>
+
+  <div id="error" class="card err hide"></div>
+
+  <div id="loading" class="card hide" style="text-align:center;color:var(--muted)">
+    <span class="spin"></span> &nbsp;Running inference…
+  </div>
+
+  <div id="results" class="hide">
+    <div class="card">
+      <div class="verdict">
+        <span class="name" id="r-name"></span>
+        <span class="pill" id="r-sev"></span>
+        <span class="conf" id="r-conf"></span>
+      </div>
+      <div class="grid">
+        <figure><img id="r-img" alt="uploaded leaf"><figcaption>Input (256×256 centre crop)</figcaption></figure>
+        <figure id="cam-wrap"><img id="r-cam" alt="Grad-CAM heatmap">
+          <figcaption>Grad-CAM — red marks the regions driving the prediction</figcaption></figure>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Class probabilities</h2>
+      <div id="r-bars"></div>
+      <div class="meta" id="r-meta"></div>
+    </div>
+
+    <div class="card">
+      <h2>Reference notes</h2>
+      <dl>
+        <dt>Cause</dt><dd id="r-path"></dd>
+        <dt>Typical symptoms</dt><dd id="r-symp"></dd>
+        <dt>Management</dt><dd id="r-mgmt"></dd>
+      </dl>
+      <div class="meta">These notes are general agronomic reference only. Confirm any diagnosis
+        and treatment plan with your local agricultural extension service before acting.</div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="wrap">
+  MSAF-DenseNet201 · DenseNet201 backbone + multi-scale CBAM fusion + attention pooling ·
+  trained 100 epochs, evaluated with 4-way flip TTA
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const drop = $('drop'), fileInput = $('file');
+let selected = null;
+
+drop.addEventListener('click', () => fileInput.click());
+['dragenter','dragover'].forEach(e => drop.addEventListener(e, ev => {
+  ev.preventDefault(); drop.classList.add('over');
+}));
+['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => {
+  ev.preventDefault(); drop.classList.remove('over');
+}));
+drop.addEventListener('drop', ev => {
+  if (ev.dataTransfer.files.length) choose(ev.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) choose(fileInput.files[0]);
+});
+
+function choose(f){
+  selected = f;
+  $('fname').textContent = f.name;
+  $('go').disabled = false;
+  $('reset').classList.remove('hide');
+  $('error').classList.add('hide');
+}
+
+$('reset').addEventListener('click', () => {
+  selected = null; fileInput.value = '';
+  $('fname').textContent = ''; $('go').disabled = true;
+  $('results').classList.add('hide'); $('error').classList.add('hide');
+  $('reset').classList.add('hide');
+});
+
+$('go').addEventListener('click', async () => {
+  if (!selected) return;
+  $('error').classList.add('hide');
+  $('results').classList.add('hide');
+  $('loading').classList.remove('hide');
+  $('go').disabled = true;
+
+  const fd = new FormData();
+  fd.append('image', selected);
+  fd.append('gradcam', $('cam').checked ? '1' : '0');
+
+  try {
+    const res  = await fetch('/predict', {method:'POST', body: fd});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    render(data);
+  } catch (e) {
+    $('error').textContent = e.message;
+    $('error').classList.remove('hide');
+  } finally {
+    $('loading').classList.add('hide');
+    $('go').disabled = false;
+  }
+});
+
+function render(d){
+  $('r-name').textContent = d.label;
+  $('r-conf').textContent = (d.confidence*100).toFixed(2) + '% confidence';
+
+  const sev = (d.info.severity || 'unknown');
+  const pill = $('r-sev');
+  pill.textContent = sev === 'none' ? 'healthy' : sev + ' severity';
+  pill.className = 'pill sev-' + sev;
+
+  $('r-img').src = d.original;
+  if (d.gradcam){ $('r-cam').src = d.gradcam; $('cam-wrap').classList.remove('hide'); }
+  else { $('cam-wrap').classList.add('hide'); }
+
+  $('r-bars').innerHTML = d.ranked.map((r,i) => `
+    <div class="bar-row ${i===0?'top':''}">
+      <div class="bar-top"><span>${r.label}</span>
+        <span class="pct">${(r.probability*100).toFixed(2)}%</span></div>
+      <div class="track"><div class="fill" style="width:0%"></div></div>
+    </div>`).join('');
+  requestAnimationFrame(() => {
+    document.querySelectorAll('#r-bars .fill').forEach((el,i) => {
+      el.style.width = (d.ranked[i].probability*100).toFixed(2) + '%';
+    });
+  });
+
+  $('r-meta').textContent =
+    `${d.inference_ms} ms on ${d.device}` + (d.tta ? ' · 4-way flip TTA' : '');
+  $('r-path').textContent = d.info.pathogen;
+  $('r-symp').textContent = d.info.symptoms;
+  $('r-mgmt').textContent = d.info.management;
+
+  $('results').classList.remove('hide');
+  $('results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+</script>
+</body>
+</html>
