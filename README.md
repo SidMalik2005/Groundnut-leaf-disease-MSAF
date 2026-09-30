@@ -8,7 +8,10 @@ It classifies a field photograph of a groundnut (*Arachis hypogaea*) leaf into o
 <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white">
 <img alt="Flask" src="https://img.shields.io/badge/Flask-web%20app-000000?logo=flask&logoColor=white">
 <img alt="License" src="https://img.shields.io/badge/License-MIT-green">
+<a href="https://sidmalik2005.github.io/Groundnut-leaf-disease-MSAF/"><img alt="Live demo" src="https://img.shields.io/badge/Live%20demo-try%20it%20in%20your%20browser-2e6b38"></a>
 </p>
+
+**▶ [Try the live demo](https://sidmalik2005.github.io/Groundnut-leaf-disease-MSAF/)** — upload a leaf photo and get a diagnosis in your browser. Nothing to install, and your photo never leaves your device.
 
 | | |
 |---|---|
@@ -97,7 +100,12 @@ Activation concentrates on the lesions rather than on soil, background or leaf e
 
 ## Web application
 
-Upload a leaf photo to get the predicted class, the confidence for **every** class, a Grad-CAM overlay and short notes on the condition (pathogen, symptoms, general management).
+There are two versions:
+
+- **[Live in-browser demo](https://sidmalik2005.github.io/Groundnut-leaf-disease-MSAF/)** (`docs/index.html`). The model is exported to ONNX (fp16, 41 MB) and runs in the visitor's browser with onnxruntime-web, using the same 4-way flip TTA. Instead of Grad-CAM, the heatmap shows the model's own attention-pooling weights. It is hosted free on GitHub Pages and never sleeps.
+- **Flask app** (`app/`). Runs on your machine, with Grad-CAM and a JSON API.
+
+In the Flask app, upload a leaf photo to get the predicted class, the confidence for **every** class, a Grad-CAM overlay and short notes on the condition (pathogen, symptoms, general management).
 
 <p align="center">
 <img src="docs/figures/app_home.png" width="32%" alt="Home">
@@ -198,6 +206,7 @@ src/make_demo_figures.py   builds the prediction + Grad-CAM figure panels
 app/                       Flask web app (app.py, templates/index.html)
 notebooks/RUN_DEMO.ipynb   zero-install Colab demo
 results/                   metrics, confusion matrix, training history, test-set probabilities
+docs/index.html            live in-browser demo (GitHub Pages) + ONNX model in docs/demo/
 docs/figures/              architecture, ranking, Grad-CAM and app screenshots
 samples/                   one example image per class
 scripts/download_model.sh  downloads the weights from the GitHub Release

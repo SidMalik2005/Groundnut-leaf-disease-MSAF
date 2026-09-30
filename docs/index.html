@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Groundnut Leaf Check</title>
+<meta name="description" content="Live demo of MSAF-DenseNet201: classify a groundnut leaf photo into five conditions, entirely in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a field-notebook tool. Leaf image on the left, the diagnosis card on the right; stacks on phones. */
+:root {
+  --bg: #f2f5ef;         /* pale sage paper */
+  --surface: #ffffff;
+  --sunk: #e6ece2;
+  --ink: #1b2419;
+  --ink-2: #4a5646;
+  --muted: #75806f;
+  --line: #d6ded1;
+  --leaf: #2e6b38;       /* accent */
+  --leaf-soft: #e1eedc;
+  --sev-none: #2e6b38;
+  --sev-low: #8a6a12;
+  --sev-moderate: #b4541a;
+  --sev-high: #a12f2f;
+  --bar: #2e6b38;
+  --bar-dim: #b9cbb2;
+  --f-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-body: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1410; --surface: #171e18; --sunk: #1f2820; --ink: #e5ece2; --ink-2: #b8c4b3;
+    --muted: #869282; --line: #2b362c; --leaf: #7cc48a; --leaf-soft: #1d2d20;
+    --sev-none: #7cc48a; --sev-low: #d6b35a; --sev-moderate: #e3905a; --sev-high: #e27474;
+    --bar: #7cc48a; --bar-dim: #3a4a3b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1410; --surface: #171e18; --sunk: #1f2820; --ink: #e5ece2; --ink-2: #b8c4b3;
+  --muted: #869282; --line: #2b362c; --leaf: #7cc48a; --leaf-soft: #1d2d20;
+  --sev-none: #7cc48a; --sev-low: #d6b35a; --sev-moderate: #e3905a; --sev-high: #e27474;
+  --bar: #7cc48a; --bar-dim: #3a4a3b; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+  padding-inline: 16px; padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+a { color: var(--leaf); }
+a:focus-visible, button:focus-visible, label:focus-visible { outline: 2px solid var(--leaf); outline-offset: 2px; }
+
+/* header */
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px;
+         padding-block: 28px 18px; border-bottom: 1px solid var(--line); }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(26px, 4.4vw, 34px); line-height: 1.1;
+            margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.brand p { margin: 6px 0 0; color: var(--ink-2); max-width: 60ch; }
+.links { display: flex; gap: 16px; font-size: 14px; white-space: nowrap; }
+.links a { text-decoration: none; font-weight: 600; }
+.links a:hover { text-decoration: underline; }
+
+/* status line */
+.status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-block: 14px; font-size: 13.5px; color: var(--ink-2); }
+#statusText { flex: 1 1 220px; min-width: 0; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
+.status.ready .dot { background: var(--leaf); }
+.status.error .dot { background: var(--sev-high); }
+.progress { flex: 1 1 180px; max-width: 260px; height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0%; background: var(--leaf); transition: width .2s; }
+
+/* main grid */
+main { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 24px; padding-block: 4px 28px; }
+@media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+
+/* image panel */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+.imgpanel { padding: 14px; display: grid; gap: 12px; }
+.stage { position: relative; width: 100%; aspect-ratio: 1 / 1; max-width: 100%; border-radius: 8px; overflow: hidden;
+         background: var(--sunk); border: 1.5px dashed var(--line); display: grid; place-items: center; cursor: pointer; }
+.stage.has-img { border-style: solid; cursor: default; }
+.stage.drag { border-color: var(--leaf); background: var(--leaf-soft); }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#heat { transition: opacity .25s; }
+.stage .hint { text-align: center; color: var(--ink-2); padding: 20px; font-size: 14px; }
+.stage .hint strong { display: block; font-size: 16px; color: var(--ink); margin-bottom: 4px; }
+.busy { position: absolute; inset: auto 10px 10px auto; background: var(--surface); color: var(--ink-2); font-size: 12px;
+        padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); font-family: var(--f-mono); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.btn { font: 600 14px var(--f-body); color: var(--surface); background: var(--leaf); border: 0; border-radius: 7px;
+       padding: 9px 14px; cursor: pointer; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); cursor: pointer; user-select: none; }
+.toggle input { accent-color: var(--leaf); width: 16px; height: 16px; }
+
+.samples-label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 2px 0 0; }
+.samples { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.sample { padding: 0; border: 2px solid transparent; border-radius: 7px; overflow: hidden; background: var(--sunk); cursor: pointer; aspect-ratio: 1/1; }
+.sample img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sample[aria-pressed="true"] { border-color: var(--leaf); }
+.sample:disabled { cursor: wait; opacity: .6; }
+
+/* result panel */
+.result { padding: 20px 20px 18px; display: grid; gap: 16px; align-content: start; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.verdict { display: grid; gap: 6px; }
+.verdict h2 { font-family: var(--f-display); font-weight: 700; font-size: clamp(26px, 3.8vw, 32px); line-height: 1.15; margin: 0; text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 14px; color: var(--ink-2); }
+.conf { font-family: var(--f-mono); font-weight: 500; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 3px 10px 3px 8px;
+        border-radius: 999px; border: 1px solid currentColor; }
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.sev-none { color: var(--sev-none); } .sev-low { color: var(--sev-low); }
+.sev-moderate { color: var(--sev-moderate); } .sev-high { color: var(--sev-high); }
+.warn { font-size: 13.5px; color: var(--sev-moderate); background: var(--sunk); border-radius: 6px; padding: 8px 10px; margin: 0; }
+
+.bars { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.bars li { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 58px; align-items: center; gap: 10px; font-size: 14px; }
+.bars .name { color: var(--ink-2); overflow-wrap: anywhere; }
+.bars li.top .name { color: var(--ink); font-weight: 600; }
+.track { height: 10px; background: var(--sunk); border-radius: 5px; overflow: hidden; }
+.track i { display: block; height: 100%; width: 0; background: var(--bar-dim); border-radius: 5px; transition: width .35s; }
+.bars li.top .track i { background: var(--bar); }
+.bars .pct { font-family: var(--f-mono); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+@media (max-width: 420px) { .bars li { grid-template-columns: minmax(0, 1fr) 54px; } .bars .track { grid-column: 1 / -1; grid-row: 2; } }
+
+.notes { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+.notes dl { margin: 0; display: grid; gap: 10px; }
+.notes dt { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.notes dd { margin: 2px 0 0; font-size: 14.5px; color: var(--ink); max-width: 65ch; }
+.notes dd.pathogen { font-style: italic; }
+.disclaimer { font-size: 12.5px; color: var(--muted); margin: 0; }
+
+/* facts strip */
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line);
+         border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.fact { background: var(--surface); padding: 14px 16px; }
+.fact b { display: block; font-family: var(--f-mono); font-weight: 500; font-size: 20px; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 13px; color: var(--ink-2); }
+@media (max-width: 640px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.how { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; padding-block: 24px 8px; }
+.how h3 { font-family: var(--f-display); font-size: 19px; margin: 0 0 6px; }
+.how p { margin: 0; color: var(--ink-2); max-width: 62ch; }
+@media (max-width: 720px) { .how { grid-template-columns: 1fr; } }
+
+footer { border-top: 1px solid var(--line); margin-top: 24px; padding-block: 18px 36px; font-size: 13px; color: var(--muted);
+         display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="brand">
+    <h1>Groundnut Leaf Check</h1>
+    <p>Photograph a groundnut leaf and MSAF-DenseNet201 names the condition: early leaf spot, late leaf spot, rust, nutrition deficiency or healthy.</p>
+  </div>
+  <nav class="links" aria-label="Project links">
+    <a href="https://github.com/SidMalik2005/Groundnut-leaf-disease-MSAF">Code on GitHub</a>
+    <a href="https://github.com/SidMalik2005/Groundnut-leaf-disease-MSAF#results">Results</a>
+  </nav>
+</header>
+
+<div class="status" id="status" role="status" aria-live="polite">
+  <span class="dot"></span>
+  <span id="statusText">Loading the model (40 MB, first visit only)…</span>
+  <span class="progress" id="progress"><i id="progressBar"></i></span>
+</div>
+
+<main>
+  <section class="panel imgpanel" aria-label="Leaf image">
+    <div class="stage" id="stage" tabindex="0" role="button" aria-label="Choose a leaf photo">
+      <div class="hint" id="hint"><strong>Drop a leaf photo here</strong>or tap to choose one. JPG or PNG, one leaf in focus works best.</div>
+      <canvas id="photo" width="512" height="512" hidden></canvas>
+      <canvas id="heat" width="512" height="512" hidden></canvas>
+      <span class="busy" id="busy" hidden>analysing…</span>
+    </div>
+    <div class="controls">
+      <input type="file" id="file" accept="image/*" hidden>
+      <button class="btn" id="pick" type="button" disabled>Upload a leaf photo</button>
+      <label class="toggle" for="showHeat"><input type="checkbox" id="showHeat" checked> Show where the model looked</label>
+    </div>
+    <p class="samples-label">Or try a sample from the dataset</p>
+    <div class="samples" id="samples"></div>
+  </section>
+
+  <section class="panel result" aria-label="Diagnosis" aria-live="polite">
+    <div class="verdict">
+      <p class="eyebrow" id="eyebrow">Diagnosis</p>
+      <h2 id="label">Waiting for the model</h2>
+      <div class="meta" id="meta"></div>
+      <p class="warn" id="warn" hidden>Low confidence. The photo may be unclear, show more than one condition, or not be a groundnut leaf.</p>
+    </div>
+    <ul class="bars" id="bars"></ul>
+    <div class="notes" id="notes" hidden>
+      <dl>
+        <div><dt>Cause</dt><dd class="pathogen" id="pathogen"></dd></div>
+        <div><dt>What it looks like</dt><dd id="symptoms"></dd></div>
+        <div><dt>What to do</dt><dd id="management"></dd></div>
+      </dl>
+      <p class="disclaimer">Screening aid only. Confirm a diagnosis with your local agricultural extension service before treating a crop.</p>
+    </div>
+  </section>
+</main>
+
+<section class="facts" aria-label="Model facts">
+  <div class="fact"><b>91.50 %</b><span>test accuracy, 918 held-out images</span></div>
+  <div class="fact"><b>1st of 30</b><span>CNNs benchmarked on the same split</span></div>
+  <div class="fact"><b>0.8877</b><span>Cohen's kappa</span></div>
+  <div class="fact"><b>20.0 M</b><span>parameters, DenseNet201 backbone</span></div>
+</section>
+
+<section class="how">
+  <div>
+    <h3>Runs on your device</h3>
+    <p>The trained network runs inside this browser tab with WebAssembly. Your photo is never uploaded anywhere. Each image is scored four times (original plus three flips) and the results are averaged, the same test-time augmentation used for the reported accuracy.</p>
+  </div>
+  <div>
+    <h3>Where the model looked</h3>
+    <p>The heatmap is the model's own learned attention pooling, averaged across its three feature scales. This layer replaces global average pooling so that small lesions are not averaged away, and it is the part of the design that targets early leaf spot.</p>
+  </div>
+</section>
+
+<footer>
+  <span>MSAF-DenseNet201 · Siddhant Malik · research internship at ICAR-NIVEDI, Bengaluru, 2026</span>
+  <span>Dataset: Data in Brief 48 (2023) 109185</span>
+</footer>
+
+</div>
+
+<script src="demo/vendor/ort.wasm.min.js"></script>
+<script>
+(() => {
+  const CLASSES = ["early_leaf_spot", "healthy leaf", "late leaf spot", "nutrition deficiency", "rust"];
+  const INFO = {
+    "early_leaf_spot": { label: "Early Leaf Spot", severity: "moderate",
+      pathogen: "Passalora arachidicola (syn. Cercospora arachidicola)",
+      symptoms: "Small brown-to-black circular lesions on the upper leaf surface, usually with a yellow halo. Appears first on older, lower leaves about 30 to 45 days after sowing.",
+      management: "Rotate out of groundnut for at least two seasons, destroy crop residue, avoid dense canopies that keep leaves wet, and grow resistant varieties where available. Fungicides work best when applied early; ask your local extension office for approved products and schedules." },
+    "late leaf spot": { label: "Late Leaf Spot", severity: "high",
+      pathogen: "Nothopassalora personata (syn. Cercosporidium personatum)",
+      symptoms: "Darker, near-black lesions, usually without the yellow halo of early leaf spot and often clearer on the underside. Heavy infection strips leaves late in the season.",
+      management: "Same cultural controls as early leaf spot. Because it strikes later, protecting the canopy through pod-fill matters most for yield. Check with local extension services for a spray programme." },
+    "rust": { label: "Groundnut Rust", severity: "high",
+      pathogen: "Puccinia arachidis",
+      symptoms: "Orange-brown raised pustules, mainly on the underside of leaflets, that burst and release rusty spores. Leaves dry out but stay attached to the plant.",
+      management: "Rust spreads on wind-borne spores, so scout neighbouring fields early. Remove volunteer groundnut plants that carry it between seasons, and plant resistant cultivars where available." },
+    "nutrition deficiency": { label: "Nutrition Deficiency", severity: "low",
+      pathogen: "Not an infection (abiotic)",
+      symptoms: "Yellowing between the veins while the veins stay green, or an overall pale colour with stunted growth. Iron deficiency in calcareous soils is a common cause.",
+      management: "Confirm with a soil test before treating, because iron, manganese and sulphur deficiency look alike. Correct soil pH where it is the cause; foliar micronutrient sprays act faster but only for a while. Fungicide will not help." },
+    "healthy leaf": { label: "Healthy Leaf", severity: "none",
+      pathogen: "None",
+      symptoms: "Even green colour with no lesions, pustules or yellowing.",
+      management: "No action needed. Keep scouting weekly; early leaf spot is easiest to control before lesions spread." }
+  };
+  const SEV_TEXT = { none: "No disease", low: "Low concern", moderate: "Moderate concern", high: "High concern" };
+  const SAMPLES = [
+    ["early_leaf_spot", "Early leaf spot"], ["healthy_leaf", "Healthy leaf"], ["late_leaf_spot", "Late leaf spot"],
+    ["nutrition_deficiency", "Nutrition deficiency"], ["rust", "Rust"]
+  ];
+  const MEAN = [0.485, 0.456, 0.406], STD = [0.229, 0.224, 0.225];
+  const SIZE = 256, RESIZE = 291;   // torchvision: Resize(int(256*1.14)) then CenterCrop(256)
+  const MODEL_URL = "demo/model/msaf_web_fp16.onnx";
+
+  const $ = id => document.getElementById(id);
+  const statusEl = $("status"), statusText = $("statusText"), progress = $("progress"), progressBar = $("progressBar");
+  const stage = $("stage"), photo = $("photo"), heat = $("heat"), hint = $("hint"), busy = $("busy");
+  const fileIn = $("file"), pick = $("pick"), showHeat = $("showHeat");
+  let session = null, running = false, lastAttention = null;
+
+  // ---------- samples
+  const samplesEl = $("samples");
+  for (const [key, name] of SAMPLES) {
+    const b = document.createElement("button");
+    b.className = "sample"; b.type = "button"; b.disabled = true; b.dataset.key = key;
+    b.setAttribute("aria-pressed", "false"); b.setAttribute("aria-label", "Sample: " + name); b.title = name;
+    b.innerHTML = `<img src="demo/samples/${key}_thumb.jpg" alt="${name} sample" loading="lazy">`;
+    b.addEventListener("click", () => runOnUrl(`demo/samples/${key}.jpg`, b));
+    samplesEl.appendChild(b);
+  }
+
+  // ---------- empty bar list
+  const bars = $("bars");
+  CLASSES.forEach(c => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="name">${INFO[c].label}</span><span class="track"><i></i></span><span class="pct">–</span>`;
+    bars.appendChild(li);
+  });
+
+  // ---------- model download with progress
+  async function fetchWithProgress(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`model download failed (HTTP ${res.status})`);
+    const total = +res.headers.get("content-length") || 40.7e6;
+    if (!res.body || !res.body.getReader) return new Uint8Array(await res.arrayBuffer());
+    const reader = res.body.getReader(); const chunks = []; let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read(); if (done) break;
+      chunks.push(value); got += value.length;
+      const pct = Math.min(100, got / total * 100);
+      progressBar.style.width = pct.toFixed(1) + "%";
+      statusText.textContent = `Loading the model: ${(got / 1e6).toFixed(1)} of ${(total / 1e6).toFixed(0)} MB (first visit only)`;
+    }
+    const out = new Uint8Array(got); let o = 0;
+    for (const c of chunks) { out.set(c, o); o += c.length; }
+    return out;
+  }
+
+  async function init() {
+    try {
+      ort.env.wasm.wasmPaths = new URL("demo/vendor/", location.href).href;
+      ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
+      const bytes = await fetchWithProgress(MODEL_URL);
+      statusText.textContent = "Starting the model…";
+      session = await ort.InferenceSession.create(bytes, { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
+      progress.hidden = true;
+      statusEl.classList.add("ready");
+      statusText.textContent = "Model ready. It runs in this tab; your photo stays on your device.";
+      pick.disabled = false;
+      document.querySelectorAll(".sample").forEach(b => b.disabled = false);
+      runOnUrl("demo/samples/late_leaf_spot.jpg", document.querySelector('.sample[data-key="late_leaf_spot"]'));
+    } catch (err) {
+      statusEl.classList.add("error"); progress.hidden = true;
+      statusText.textContent = "The model could not load: " + (err && err.message ? err.message : err) + ". Try reloading the page, or use a recent Chrome, Edge, Firefox or Safari.";
+      $("label").textContent = "Model unavailable";
+    }
+  }
+
+  // ---------- image handling
+  async function loadBitmap(src) {
+    if (src instanceof Blob) {
+      try { return await createImageBitmap(src, { imageOrientation: "from-image" }); } catch (e) { /* fall through */ }
+      src = URL.createObjectURL(src);
+    }
+    const img = new Image(); img.decoding = "async"; img.src = src;
+    await img.decode(); return img;
+  }
+
+  function cropBox(w, h) {                   // centre square that survives Resize(291) + CenterCrop(256)
+    const s = Math.min(w, h) * SIZE / RESIZE;
+    return [(w - s) / 2, (h - s) / 2, s];
+  }
+
+  function toTensor(bmp) {
+    const w = bmp.width, h = bmp.height, [sx, sy, s] = cropBox(w, h);
+    const c = document.createElement("canvas"); c.width = SIZE; c.height = SIZE;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(bmp, sx, sy, s, s, 0, 0, SIZE, SIZE);
+    const px = ctx.getImageData(0, 0, SIZE, SIZE).data, n = SIZE * SIZE;
+    const data = new Float32Array(3 * n);
+    for (let i = 0; i < n; i++) {
+      data[i]         = (px[i * 4]     / 255 - MEAN[0]) / STD[0];
+      data[n + i]     = (px[i * 4 + 1] / 255 - MEAN[1]) / STD[1];
+      data[2 * n + i] = (px[i * 4 + 2] / 255 - MEAN[2]) / STD[2];
+    }
+    // show the same square the model sees
+    const pctx = photo.getContext("2d");
+    pctx.imageSmoothingQuality = "high";
+    pctx.drawImage(bmp, sx, sy, s, s, 0, 0, photo.width, photo.height);
+    return new ort.Tensor("float32", data, [1, 3, SIZE, SIZE]);
+  }
+
+  // perceptual warm ramp: transparent -> amber -> red, alpha grows with attention
+  function drawHeat(att) {
+    const g = 32, small = document.createElement("canvas"); small.width = g; small.height = g;
+    const sctx = small.getContext("2d"), img = sctx.createImageData(g, g);
+    let lo = Infinity, hi = -Infinity;
+    for (const v of att) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    for (let i = 0; i < g * g; i++) {
+      const t = hi > lo ? (att[i] - lo) / (hi - lo) : 0;
+      const r = 255, gg = Math.round(214 - 170 * t), b = Math.round(60 - 40 * t);
+      img.data[i * 4] = r; img.data[i * 4 + 1] = gg; img.data[i * 4 + 2] = b;
+      img.data[i * 4 + 3] = Math.round(215 * Math.pow(t, 1.6));
+    }
+    sctx.putImageData(img, 0, 0);
+    const hctx = heat.getContext("2d");
+    hctx.clearRect(0, 0, heat.width, heat.height);
+    hctx.imageSmoothingEnabled = true; hctx.imageSmoothingQuality = "high";
+    hctx.drawImage(small, 0, 0, heat.width, heat.height);
+  }
+
+  function render(probs) {
+    const order = [...probs.keys()].sort((a, b) => probs[b] - probs[a]);
+    const top = order[0], cls = CLASSES[top], info = INFO[cls], p = probs[top];
+    $("eyebrow").textContent = "Diagnosis";
+    $("label").textContent = info.label;
+    $("meta").innerHTML = `<span class="conf">${(p * 100).toFixed(1)}%</span><span>confidence</span>` +
+      `<span class="chip sev-${info.severity}">${SEV_TEXT[info.severity]}</span>`;
+    $("warn").hidden = p >= 0.5;
+    [...bars.children].forEach((li, i) => {
+      li.classList.toggle("top", i === top);
+      li.querySelector(".track i").style.width = (probs[i] * 100).toFixed(1) + "%";
+      li.querySelector(".pct").textContent = (probs[i] * 100).toFixed(1) + "%";
+    });
+    $("pathogen").textContent = info.pathogen;
+    $("pathogen").classList.toggle("pathogen", info.severity !== "none" && cls !== "nutrition deficiency");
+    $("symptoms").textContent = info.symptoms;
+    $("management").textContent = info.management;
+    $("notes").hidden = false;
+  }
+
+  async function analyse(src, sampleBtn) {
+    if (!session || running) return;
+    running = true; busy.hidden = false;
+    document.querySelectorAll(".sample").forEach(b => b.setAttribute("aria-pressed", String(b === sampleBtn)));
+    try {
+      const bmp = await loadBitmap(src);
+      hint.hidden = true; photo.hidden = false; heat.hidden = false; stage.classList.add("has-img");
+      const x = toTensor(bmp);
+      await new Promise(r => setTimeout(r, 30));    // let the photo paint before the heavy run
+      const t0 = performance.now();
+      const out = await session.run({ image: x });
+      const probs = Array.from(out.probs.data), att = Float32Array.from(out.attention.data);
+      lastAttention = att; drawHeat(att); heat.style.opacity = showHeat.checked ? "1" : "0";
+      render(probs);
+      statusText.textContent = `Model ready. Last image analysed in ${((performance.now() - t0) / 1000).toFixed(1)} s, on your device.`;
+    } catch (err) {
+      $("label").textContent = "Could not read that image";
+      $("meta").textContent = "Try a JPG or PNG photo of a single leaf.";
+      $("warn").hidden = true;
+    } finally {
+      running = false; busy.hidden = true;
+    }
+  }
+  const runOnUrl = (url, btn) => analyse(url, btn);
+
+  // ---------- input wiring
+  const chooseFile = () => { if (session) fileIn.click(); };
+  pick.addEventListener("click", chooseFile);
+  stage.addEventListener("click", () => { if (!stage.classList.contains("has-img")) chooseFile(); });
+  stage.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); chooseFile(); } });
+  fileIn.addEventListener("change", () => { const f = fileIn.files && fileIn.files[0]; if (f) analyse(f, null); fileIn.value = ""; });
+  ["dragenter", "dragover"].forEach(ev => stage.addEventListener(ev, e => { e.preventDefault(); stage.classList.add("drag"); }));
+  ["dragleave", "drop"].forEach(ev => stage.addEventListener(ev, e => { e.preventDefault(); stage.classList.remove("drag"); }));
+  stage.addEventListener("drop", e => { const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f && f.type.startsWith("image/")) analyse(f, null); });
+  document.addEventListener("paste", e => {
+    const item = [...(e.clipboardData ? e.clipboardData.items : [])].find(i => i.type.startsWith("image/"));
+    if (item) analyse(item.getAsFile(), null);
+  });
+  showHeat.addEventListener("change", () => { heat.style.opacity = showHeat.checked ? "1" : "0"; });
+
+  init();
+})();
+</script>
+</body>
+</html>
